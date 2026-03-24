@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 const router = Router();
 
-const BASE_URL = 'https://p000-sharedstreams.icloud.com';
+const BASE_URL = 'https://p23-sharedstreams.icloud.com';
 const ALBUM_TOKEN = process.env.APPLE_ALBUM_TOKEN;
 
 let cachedPhotos = null;
@@ -28,9 +28,10 @@ const getRandomPhoto = (photos) => {
     if (photos.length <= 1) return photos[0] || null;
 
     let photo;
-    while (photo.guid === lastGuid) {
+    do {
         photo = photos[Math.floor(Math.random() * photos.length)]
-    }
+    } while (photo.guid === lastGuid)
+
     lastGuid = photo.guid;
     return photo;
 };
@@ -40,23 +41,27 @@ async function getPhotoList() {
         return cachedPhotos;
     }
 
-    const url = `${BASE_URL}/${ALBUM_TOKEN}/sharedstreams/webstream`
-    const photoResponse = await fetchPhotos(url);
+    let apiBase = `${BASE_URL}/${ALBUM_TOKEN}/sharedstreams`;
+    let streamData = await postJson(`${apiBase}/webstream`, { streamCtag: null });
 
-    const photoData = await photoResponse.json();
-    const photos = photoData?.photos || [];
+    const host = streamData['X-Apple-MMe-Host'];
+    if (host) {
+        apiBase = `https://${host}/${ALBUM_TOKEN}/sharedstreams`;
+        streamData = await postJson(`${apiBase}/webstream`, { streamCtag: null });
+    }
+
+    const photos = streamData?.photos || [];
 
     if (photos.length === 0) return [];
 
     const photoGuids = photos.map((p) => p.photoGuid);
 
-    const assetResponse = await fetchAssets(photoGuids);
-    const assetData = await assetResponse.json();
+    const assetData = await postJson(`${apiBase}/webasseturls`, { photoGuids });
     const locations = assetData.items || {};
 
     const photoList = buildPhotoList(photos, locations);
 
-    updateCache(photoList)
+    updateCache(photoList);
     return photoList;
 }
 
@@ -65,28 +70,16 @@ const updateCache = (photoList) => {
     cacheTime = Date.now();
 }
 
-const fetchPhotos = async (url) => {
-    const response = await fetch(url, {
+const postJson = async (url, body) => {
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ streamCtag: null }),
-    })
-
-    return response;
-}
-
-const fetchAssets = async (photoIds) => {
-    const response = await fetch(
-        `${BASE_URL}/${ALBUM_TOKEN}/sharedstreams/webasseturls`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ photoGuids: photoIds }),
-        }
-    );
-
-    return response;
-}
+        body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!data) throw new Error(`Empty response from ${url}`);
+    return data;
+};
 
 const buildPhotoList = (photos, locations) => {
     const results = [];
