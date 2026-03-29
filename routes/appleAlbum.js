@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { minutes } from '../utils/utils.js';
 
 const router = Router();
 
@@ -7,7 +8,7 @@ const ALBUM_TOKEN = process.env.APPLE_ALBUM_TOKEN;
 
 let cachedPhotos = null;
 let cacheTime = 0;
-const CACHE_TTL = 1000 * 60 * 30;
+const CACHE_TTL = minutes(30);
 // refresh cache time ^ (30 mins)
 let lastGuid = null;
 
