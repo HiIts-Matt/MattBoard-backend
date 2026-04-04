@@ -9,7 +9,13 @@ import toDoPost from './routes/toDo/POST.js';
 import toDoPut from './routes/toDo/PUT.js';
 
 import weatherGet from './routes/weather/GET.js';
-import newsGet from './routes/news/GET.js'
+import newsGet from './routes/news/GET.js';
+
+import { authRedirect, authCallback } from './routes/calendar/auth.js';
+import calendarGet from './routes/calendar/GET.js';
+import calendarPost from './routes/calendar/POST.js';
+import calendarPut from './routes/calendar/PUT.js';
+import calendarDelete from './routes/calendar/DELETE.js';
 
 const app = express();
 const PORT = process.env.PORT;
@@ -25,6 +31,13 @@ app.get('/news', newsGet);
 app.get('/todo', toDoGet);
 app.post('/todo', toDoPost);
 app.put('/todo', toDoPut);
+
+app.get('/calendar/auth', authRedirect);
+app.get('/calendar/auth/callback', authCallback);
+app.get('/calendar/events', calendarGet);
+app.post('/calendar/events', calendarPost);
+app.put('/calendar/events/:id', calendarPut);
+app.delete('/calendar/events/:id', calendarDelete);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
