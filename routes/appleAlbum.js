@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { minutes } from '../utils/utils.js';
+import { IdHandler, minutes } from '../utils/utils.js';
 
 const router = Router();
 
@@ -12,15 +12,24 @@ const CACHE_TTL = minutes(30);
 // refresh cache time ^ (30 mins)
 let lastGuid = null;
 
+const {
+    receive,
+    resolve,
+    error
+} = IdHandler();
+
 router.get('/random', async (req, res) => {
+    const reqId = receive(req)
+
     try {
         const photos = await getPhotoList();
         if (photos.length === 0) {
             return res.status(404).json({ error: 'No photos found' });
         }
+        resolve(req, reqId);
         res.json(getRandomPhoto(photos));
     } catch (err) {
-        console.error('Failed to fetch album:', err);
+        error(req, reqId)
         res.status(502).json({ error: 'Failed to fetch album from iCloud' });
     }
 });

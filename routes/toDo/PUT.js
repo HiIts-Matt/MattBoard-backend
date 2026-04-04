@@ -1,9 +1,16 @@
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { IdHandler } from '../../utils/utils.js';
 
 const TODOS_FILE = './storage/todos.json';
 
+const {
+    receive,
+    resolve
+} = IdHandler();
+
 export default function handler(req, res) {
-    console.log('/todos  - PUT');
+
+    const reqId = receive(req)
 
     if (!existsSync(TODOS_FILE)) {
         const err = new Error('Todo storage not found')
@@ -24,5 +31,7 @@ export default function handler(req, res) {
 
     Object.assign(todo, item);
     writeFileSync(TODOS_FILE, JSON.stringify(data));
+
+    resolve(req, reqId);
     res.json(todo);
 }
