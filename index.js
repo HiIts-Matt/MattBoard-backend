@@ -11,6 +11,9 @@ import toDoPut from './routes/toDo/PUT.js';
 import weatherGet from './routes/weather/GET.js';
 import newsGet from './routes/news/GET.js';
 
+import configGet from './routes/config/GET.js';
+import configPut from './routes/config/PUT.js';
+
 import { authRedirect, authCallback } from './routes/calendar/auth.js';
 import calendarGet from './routes/calendar/GET.js';
 import calendarPost from './routes/calendar/POST.js';
@@ -27,6 +30,9 @@ app.use('/health', healthRouter);
 app.use('/apple-album', appleAlbumRouter);
 app.get('/weather', weatherGet);
 app.get('/news', newsGet);
+
+app.get('/config', configGet);
+app.put('/config', configPut);
 
 app.get('/todo', toDoGet);
 app.post('/todo', toDoPost);
