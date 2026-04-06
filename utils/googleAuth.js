@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 
 const TOKEN_FILE = './storage/google_token.json';
 
@@ -18,6 +18,10 @@ export function loadToken() {
 
 export function saveToken(token) {
     writeFileSync(TOKEN_FILE, JSON.stringify(token));
+}
+
+export function deleteToken() {
+    if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
 }
 
 export function getAuthenticatedClient() {

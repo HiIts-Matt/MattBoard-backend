@@ -14,7 +14,7 @@ import newsGet from './routes/news/GET.js';
 import configGet from './routes/config/GET.js';
 import configPut from './routes/config/PUT.js';
 
-import { authRedirect, authCallback } from './routes/calendar/auth.js';
+import { authRedirect, authCallback, authStatus, authDisconnect } from './routes/calendar/auth.js';
 import calendarGet from './routes/calendar/GET.js';
 import calendarPost from './routes/calendar/POST.js';
 import calendarPut from './routes/calendar/PUT.js';
@@ -40,6 +40,8 @@ app.put('/todo', toDoPut);
 
 app.get('/calendar/auth', authRedirect);
 app.get('/calendar/auth/callback', authCallback);
+app.get('/calendar/auth/status', authStatus);
+app.delete('/calendar/auth', authDisconnect);
 app.get('/calendar/events', calendarGet);
 app.post('/calendar/events', calendarPost);
 app.put('/calendar/events/:id', calendarPut);
