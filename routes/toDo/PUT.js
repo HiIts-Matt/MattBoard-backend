@@ -26,10 +26,28 @@ export default function handler(req, res) {
 
     const data = JSON.parse(readFileSync(TODOS_FILE, 'utf-8'));
 
-    const todo = data.todos.find((t) => String(t.id) === String(id));
-    if (!todo) return res.status(404).json({ error: 'Todo not found' });
+    let currentListName = null;
+    let todoIndex = -1;
+    for (const [listName, todos] of Object.entries(data)) {
+        const index = todos.findIndex(t => String(t.id) === String(id));
+        if (index !== -1) {
+            currentListName = listName;
+            todoIndex = index;
+            break;
+        }
+    }
+    if (todoIndex === -1) return res.status(404).json({ error: 'Todo not found' });
 
-    Object.assign(todo, item);
+    const { listName: newListName, ...updateItem } = item;
+    const todo = data[currentListName][todoIndex];
+    Object.assign(todo, updateItem);
+
+    if (newListName && newListName !== currentListName) {
+        data[currentListName].splice(todoIndex, 1);
+        if (!data[newListName]) data[newListName] = [];
+        data[newListName].push(todo);
+    }
+
     writeFileSync(TODOS_FILE, JSON.stringify(data));
 
     resolve(req, reqId);

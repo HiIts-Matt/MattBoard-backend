@@ -7,6 +7,7 @@ import healthRouter from './routes/health.js'
 import toDoGet from './routes/toDo/GET.js';
 import toDoPost from './routes/toDo/POST.js';
 import toDoPut from './routes/toDo/PUT.js';
+import toDoDelete from './routes/toDo/DELETE.js';
 
 import weatherGet from './routes/weather/GET.js';
 import newsGet from './routes/news/GET.js';
@@ -37,6 +38,7 @@ app.put('/config', configPut);
 app.get('/todo', toDoGet);
 app.post('/todo', toDoPost);
 app.put('/todo', toDoPut);
+app.delete('/todo', toDoDelete);
 
 app.get('/calendar/auth', authRedirect);
 app.get('/calendar/auth/callback', authCallback);

@@ -15,14 +15,20 @@ export default function handler(req, res) {
 
     const data = existsSync(TODOS_FILE)
         ? JSON.parse(readFileSync(TODOS_FILE, 'utf-8'))
-        : { todos: [] }
+        : {}
+
+    const { listName, ...todoBody } = req.body;
 
     const todo = {
-        id: req.body.id ?? randomUUID(),
-        ...req.body,
+        id: todoBody.id ?? randomUUID(),
+        ...todoBody,
     };
 
-    data.todos.push(todo);
+    if (!data[listName]) {
+        data[listName] = [];
+    }
+
+    data[listName].push(todo);
     writeFileSync(TODOS_FILE, JSON.stringify(data));
     resolve(req, reqId)
     res.json(todo);
