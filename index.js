@@ -20,6 +20,7 @@ import calendarGet from './routes/calendar/GET.js';
 import calendarPost from './routes/calendar/POST.js';
 import calendarPut from './routes/calendar/PUT.js';
 import calendarDelete from './routes/calendar/DELETE.js';
+import calendarListGet from './routes/calendar/calendars.js';
 
 const app = express();
 const PORT = process.env.PORT;
@@ -44,6 +45,7 @@ app.get('/calendar/auth', authRedirect);
 app.get('/calendar/auth/callback', authCallback);
 app.get('/calendar/auth/status', authStatus);
 app.delete('/calendar/auth', authDisconnect);
+app.get('/calendar/calendars', calendarListGet);
 app.get('/calendar/events', calendarGet);
 app.post('/calendar/events', calendarPost);
 app.put('/calendar/events/:id', calendarPut);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { IdHandler, minutes } from '../utils/utils.js';
+import sharp from 'sharp';
 
 const router = Router();
 
@@ -118,5 +119,43 @@ const buildPhotoList = (photos, locations) => {
 };
 
 
+
+// In-memory cache for blurred images: key = `${url}:${amount}`
+const blurCache = new Map();
+const BLUR_CACHE_TTL = minutes(30);
+
+router.get('/blur', async (req, res) => {
+    const { url, amount } = req.query;
+    if (!url) return res.status(400).json({ error: 'url is required' });
+
+    const sigma = Math.max(0.3, Math.min(100, Number(amount) || 5));
+    const cacheKey = `${url}:${sigma}`;
+
+    const cached = blurCache.get(cacheKey);
+    if (cached && Date.now() - cached.time < BLUR_CACHE_TTL) {
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=1800');
+        return res.send(cached.buffer);
+    }
+
+    try {
+        const imgRes = await fetch(url);
+        if (!imgRes.ok) throw new Error(`Upstream ${imgRes.status}`);
+        const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+
+        const blurred = await sharp(imgBuffer)
+            .blur(sigma)
+            .jpeg({ quality: 85 })
+            .toBuffer();
+
+        blurCache.set(cacheKey, { buffer: blurred, time: Date.now() });
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=1800');
+        res.send(blurred);
+    } catch (err) {
+        console.error('[blur] Failed to blur image:', err.message);
+        res.status(502).json({ error: 'Failed to blur image' });
+    }
+});
 
 export default router;

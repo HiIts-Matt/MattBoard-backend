@@ -43,7 +43,7 @@ export function IdHandler() {
         console.log(`${route} - ${action}: responded in ${responseTime - receiveTime}ms`)
     }
 
-    const error = (req, id) => {
+    const error = (req, id, err) => {
         const route = req?.route?.path
         const action = Object.entries(req?.route?.methods).filter(([action, value]) => value)?.[0]?.[0]
 
@@ -54,6 +54,7 @@ export function IdHandler() {
 
         activeRequests.delete(requestID);
         console.log(`${route} - ${action}: failed in ${responseTime - receiveTime}ms`)
+        if (err) console.error(err)
     }
 
     return {
