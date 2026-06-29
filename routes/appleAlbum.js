@@ -1,17 +1,16 @@
 import { Router } from 'express';
+import { readFileSync, existsSync } from 'fs';
 import { IdHandler, minutes } from '../utils/utils.js';
 import sharp from 'sharp';
 
 const router = Router();
 
 const BASE_URL = 'https://p23-sharedstreams.icloud.com';
-const ALBUM_TOKEN = process.env.APPLE_ALBUM_TOKEN;
+const CONFIG_FILE = './storage/config.json';
 
-let cachedPhotos = null;
-let cacheTime = 0;
+// Per-token album cache: token -> { photos, time, lastGuid }
+const albumCache = new Map();
 const CACHE_TTL = minutes(30);
-// refresh cache time ^ (30 mins)
-let lastGuid = null;
 
 const {
     receive,
@@ -19,45 +18,92 @@ const {
     error
 } = IdHandler();
 
+// Resolve the album token. Precedence: explicit ?token= (used to preview an
+// album before it's saved) → saved config's background.apple.albumToken → env.
+function resolveToken(req) {
+    const fromQuery = req.query.token?.trim();
+    if (fromQuery) return fromQuery;
+
+    const fromConfig = activeBackground()?.apple?.albumToken;
+    if (fromConfig) return fromConfig;
+
+    return process.env.APPLE_ALBUM_TOKEN || null;
+}
+
+function activeBackground() {
+    try {
+        if (!existsSync(CONFIG_FILE)) return null;
+        const content = readFileSync(CONFIG_FILE, 'utf-8').trim();
+        if (!content) return null;
+        const data = JSON.parse(content);
+        return data.configs?.find(c => c.id === data.active)?.background ?? null;
+    } catch {
+        return null;
+    }
+}
+
 router.get('/random', async (req, res) => {
-    const reqId = receive(req)
+    const reqId = receive(req);
+    const token = resolveToken(req);
+    if (!token) {
+        return res.status(404).json({ error: 'No album configured. Set an Apple album token in your background settings.' });
+    }
 
     try {
-        const photos = await getPhotoList();
+        const photos = await getPhotoList(token);
         if (photos.length === 0) {
             return res.status(404).json({ error: 'No photos found' });
         }
         resolve(req, reqId);
-        res.json(getRandomPhoto(photos));
+        res.json(getRandomPhoto(token, photos));
     } catch (err) {
-        error(req, reqId)
+        error(req, reqId);
         res.status(502).json({ error: 'Failed to fetch album from iCloud' });
     }
 });
 
-const getRandomPhoto = (photos) => {
+router.get('/list', async (req, res) => {
+    const reqId = receive(req);
+    const token = resolveToken(req);
+    if (!token) {
+        return res.status(404).json({ error: 'No album configured. Set an Apple album token in your background settings.' });
+    }
+
+    try {
+        const photos = await getPhotoList(token);
+        resolve(req, reqId);
+        res.json({ items: photos });
+    } catch (err) {
+        error(req, reqId);
+        res.status(502).json({ error: 'Failed to fetch album from iCloud' });
+    }
+});
+
+const getRandomPhoto = (token, photos) => {
     if (photos.length <= 1) return photos[0] || null;
 
+    const cache = albumCache.get(token);
     let photo;
     do {
-        photo = photos[Math.floor(Math.random() * photos.length)]
-    } while (photo.guid === lastGuid)
+        photo = photos[Math.floor(Math.random() * photos.length)];
+    } while (photo.guid === cache?.lastGuid);
 
-    lastGuid = photo.guid;
+    if (cache) cache.lastGuid = photo.guid;
     return photo;
 };
 
-async function getPhotoList() {
-    if (cachedPhotos && Date.now() - cacheTime < CACHE_TTL) {
-        return cachedPhotos;
+async function getPhotoList(token) {
+    const cached = albumCache.get(token);
+    if (cached?.photos && Date.now() - cached.time < CACHE_TTL) {
+        return cached.photos;
     }
 
-    let apiBase = `${BASE_URL}/${ALBUM_TOKEN}/sharedstreams`;
+    let apiBase = `${BASE_URL}/${token}/sharedstreams`;
     let streamData = await postJson(`${apiBase}/webstream`, { streamCtag: null });
 
     const host = streamData['X-Apple-MMe-Host'];
     if (host) {
-        apiBase = `https://${host}/${ALBUM_TOKEN}/sharedstreams`;
+        apiBase = `https://${host}/${token}/sharedstreams`;
         streamData = await postJson(`${apiBase}/webstream`, { streamCtag: null });
     }
 
@@ -72,13 +118,8 @@ async function getPhotoList() {
 
     const photoList = buildPhotoList(photos, locations);
 
-    updateCache(photoList);
+    albumCache.set(token, { photos: photoList, time: Date.now(), lastGuid: cached?.lastGuid ?? null });
     return photoList;
-}
-
-const updateCache = (photoList) => {
-    cachedPhotos = photoList;
-    cacheTime = Date.now();
 }
 
 const postJson = async (url, body) => {

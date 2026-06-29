@@ -2,6 +2,7 @@ import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
 import appleAlbumRouter from './routes/appleAlbum.js';
+import nasaRouter from './routes/nasa.js';
 import healthRouter from './routes/health.js'
 
 import toDoGet from './routes/toDo/GET.js';
@@ -30,6 +31,7 @@ app.use(express.json());
 
 app.use('/health', healthRouter);
 app.use('/apple-album', appleAlbumRouter);
+app.use('/nasa', nasaRouter);
 app.get('/weather', weatherGet);
 app.get('/news', newsGet);
 
